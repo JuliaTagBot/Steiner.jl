@@ -5,16 +5,16 @@ Compute all conics tangents to five given tonics.
 ## Installation
 
 Start a Julia session and enter the `pkg`-mode by pressing `]`:
-```julia-repl
+```julia
 pkg> add https://github.com/JuliaHomotopyContinuation/Steiner.jl.git
 ```
 alternatively, you can do
-```julia-repl
-julia>using Pkg; Pkg.add("https://github.com/JuliaHomotopyContinuation/Steiner.jl.git");
+```julia
+julia> using Pkg; Pkg.add("https://github.com/JuliaHomotopyContinuation/Steiner.jl.git");
 ```
 
 We provide a web interface to compute the conics tangent. You can start this with
-```julia-repl
+```julia
 julia> using Steiner;
 julia> start_server();
 ```
