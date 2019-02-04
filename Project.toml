@@ -15,3 +15,6 @@ ProjectiveVectors = "01f381cc-face-5a0a-ade9-ef63dc65d628"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[compat]
+HomotopyContinuation = "^0.5.0"
