@@ -607,9 +607,9 @@ class CustomInput extends React.Component {
           : e(
               "div",
               { style: { display: "inline-block", marginLeft: 4 } },
-              "Of the 3264 conics are probably",
+              "Of the 3264 conics are",
               e("strong", null, " ? "),
-              "real."
+              "probably real."
             ),
         e("canvas", {
           resize: "true",
