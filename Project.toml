@@ -17,4 +17,4 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-HomotopyContinuation = "^0.5.0"
+HomotopyContinuation = "^0.5.1"
