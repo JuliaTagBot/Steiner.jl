@@ -88,6 +88,7 @@ end
 
 function handle_solve_conics(conics_input)
     M = zeros(5, 5)
+    @info "Compute conics: $conics_input"
     for j in 1:5, i in 1:5
         M[i, j] = conics_input[j][i]
     end
