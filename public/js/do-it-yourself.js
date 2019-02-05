@@ -18,6 +18,10 @@ function random_conic_state() {
   return values;
 }
 
+function even(x) {
+  return x % 2 == 0 ? x : x + 1;
+}
+
 function random_number() {
   var x = Math.round((Math.random() * 10 - 5) * 10) / 10;
   while (x === 0.0) {
@@ -591,9 +595,9 @@ class CustomInput extends React.Component {
           ? e(
               "div",
               { style: { display: "inline-block", marginLeft: 4 } },
-              "Of the 3264 conics are probably",
-              e("strong", null, " ", this.state.computed.nreal, " "),
-              "real."
+              "Of the 3264 conics are",
+              e("strong", null, " ", even(this.state.computed.nreal), " "),
+              "probably real."
             )
           : e(
               "div",
