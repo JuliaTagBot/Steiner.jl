@@ -1,6 +1,6 @@
 # Steiner
 
-Compute all conics tangents to five given tonics.
+Compute all conics tangent to five given conics.
 
 ## Installation
 
@@ -19,5 +19,5 @@ julia> using Steiner;
 julia> start_server();
 ```
 
-By default you then should be able to go to [http://localhost:3264](http://localhost:3264)
+Then you should be able to go to [http://localhost:3264](http://localhost:3264)
 and compute your conics.
