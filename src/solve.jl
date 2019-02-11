@@ -107,11 +107,8 @@ end
 
 
 function handle_solve_conics(conics_input)
-    M = ones(6, 5)
-    @info "Compute conics: $conics_input"
-    for j in 1:5, i in 1:5
-        M[i, j] = conics_input[j][i]
-    end
-    @info "M: $M"
+    M = [conics_input[j][i] for i ∈ 1:6, j ∈ 1:5]
+    @info "Compute conics:"
+    display(M)
     solve_conics(M)
 end
