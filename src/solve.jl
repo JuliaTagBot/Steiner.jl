@@ -58,8 +58,7 @@ end
 """
     solve_conics(M::Matrix)
 
-The conics are described as 5 × 5 matrix.
-Each column describes a normalized conic, i.e., with constant term 1.
+The conics are described as 6 × 5 matrix.
 
 Output is a vector of normalized conics.
 """
@@ -109,7 +108,7 @@ end
 function handle_solve_conics(conics_input)
     M = ones(6, 5)
     @info "Compute conics: $conics_input"
-    for j in 1:5, i in 1:5
+    for j in 1:5, i in 1:6
         M[i, j] = conics_input[j][i]
     end
     @info "M: $M"
