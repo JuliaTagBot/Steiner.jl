@@ -1,9 +1,13 @@
 "use strict";
 
 const COMPUTE_URL = location.protocol + "//localhost:3264/conics";
-
 const e = React.createElement;
-const conicColors = ["#9b59b6", "#c0392b", "#f1c40f", "#2ecc71", "#3498db"];
+const tangentialConicColor = "#FB5B5B";
+const givenConicColor = "#25A9CC";
+
+function even(x) {
+  return x % 2 == 0 ? x : x + 1;
+}
 
 function random_conic_state() {
   var values = {
@@ -16,10 +20,6 @@ function random_conic_state() {
   };
 
   return values;
-}
-
-function even(x) {
-  return x % 2 == 0 ? x : x + 1;
 }
 
 function random_number() {
@@ -87,6 +87,115 @@ function postData(url, data) {
       return response.json();
     }.bind(this)
   ); // parses response to JSON
+}
+
+function conicsToString(given_conics, conics) {
+  var str =
+    "# A conic is represented by a single line. The coefficients are in the order a,b,c,d,e,f where ax^2+bxy+cy^2+dx+ey+f=0 separeted by a tab (\\t).  The first block are the 5 given conics and the second block are the real conics tangent to those 5 conics.\n";
+  str += "\n";
+
+  str +=
+    given_conics[0].a +
+    "\t" +
+    given_conics[0].b +
+    "\t" +
+    given_conics[0].c +
+    "\t" +
+    given_conics[0].d +
+    "\t" +
+    given_conics[0].e +
+    "\t" +
+    given_conics[0].f +
+    "\n";
+  str +=
+    given_conics[1].a +
+    "\t" +
+    given_conics[1].b +
+    "\t" +
+    given_conics[1].c +
+    "\t" +
+    given_conics[1].d +
+    "\t" +
+    given_conics[1].e +
+    "\t" +
+    given_conics[1].f +
+    "\n";
+  str +=
+    given_conics[2].a +
+    "\t" +
+    given_conics[2].b +
+    "\t" +
+    given_conics[2].c +
+    "\t" +
+    given_conics[2].d +
+    "\t" +
+    given_conics[2].e +
+    "\t" +
+    given_conics[2].f +
+    "\n";
+  str +=
+    given_conics[3].a +
+    "\t" +
+    given_conics[3].b +
+    "\t" +
+    given_conics[3].c +
+    "\t" +
+    given_conics[3].d +
+    "\t" +
+    given_conics[3].e +
+    "\t" +
+    given_conics[3].f +
+    "\n";
+  str +=
+    given_conics[4].a +
+    "\t" +
+    given_conics[4].b +
+    "\t" +
+    given_conics[4].c +
+    "\t" +
+    given_conics[4].d +
+    "\t" +
+    given_conics[4].e +
+    "\t" +
+    given_conics[4].f +
+    "\n";
+
+  str += "\n";
+  for (var i = 0; i < conics.length; i++) {
+    str +=
+      conics[i][0] +
+      "\t" +
+      conics[i][1] +
+      "\t" +
+      conics[i][2] +
+      "\t" +
+      conics[i][3] +
+      "\t" +
+      conics[i][4] +
+      "\t1\n";
+  }
+
+  return str;
+}
+
+function complexToString(re, im) {
+  return im < 0 ? re + " - " + Math.abs(im) + "im" : re + "+ " + im + "im";
+}
+
+function download(filename, text) {
+  var element = document.createElement("a");
+  element.setAttribute(
+    "href",
+    "data:text/plain;charset=utf-8," + encodeURIComponent(text)
+  );
+  element.setAttribute("download", filename);
+
+  element.style.display = "none";
+  document.body.appendChild(element);
+
+  element.click();
+
+  document.body.removeChild(element);
 }
 
 class InlineMath extends React.Component {
@@ -308,13 +417,15 @@ class CustomInput extends React.Component {
     this.renderAllTangentialConics = this.renderAllTangentialConics.bind(this);
     this.startStopRendering = this.startStopRendering.bind(this);
     this.removeOldData = this.removeOldData.bind(this);
+    this.downloadRealData = this.downloadRealData.bind(this);
+    this.downloadComplexData = this.downloadComplexData.bind(this);
   }
 
   componentDidMount() {
     window.setup_conics(
       {
         canvasName: "CustomInput",
-        xMax: 12,
+        xMax: 20,
         drawAxis: true
       },
       function() {
@@ -347,13 +458,15 @@ class CustomInput extends React.Component {
 
   addConic(values, i) {
     var rendered = window.draw_conic(values, {
-      strokeColor: conicColors[4],
+      strokeColor: givenConicColor,
       opacity: 0.7,
       strokeWidth: 2
     });
-    var conics = this.state.conics;
-    conics[i] = { rendered: rendered, coeffs: values };
-    this.setState({ conics: conics });
+    if (rendered !== null) {
+      var conics = this.state.conics;
+      conics[i] = { rendered: rendered, coeffs: values };
+      this.setState({ conics: conics });
+    }
 
     return;
   }
@@ -408,45 +521,7 @@ class CustomInput extends React.Component {
   }
 
   fetchTangentConics() {
-    var c = this.state.given_conics;
-    var conics = [
-      [
-        c[0].a / c[0].f,
-        c[0].b / c[0].f,
-        c[0].c / c[0].f,
-        c[0].d / c[0].f,
-        c[0].e / c[0].f
-      ],
-      [
-        c[1].a / c[1].f,
-        c[1].b / c[1].f,
-        c[1].c / c[1].f,
-        c[1].d / c[1].f,
-        c[1].e / c[1].f
-      ],
-      [
-        c[2].a / c[2].f,
-        c[2].b / c[2].f,
-        c[2].c / c[2].f,
-        c[2].d / c[2].f,
-        c[2].e / c[2].f
-      ],
-      [
-        c[3].a / c[3].f,
-        c[3].b / c[3].f,
-        c[3].c / c[3].f,
-        c[3].d / c[3].f,
-        c[3].e / c[3].f
-      ],
-      [
-        c[4].a / c[4].f,
-        c[4].b / c[4].f,
-        c[4].c / c[4].f,
-        c[4].d / c[4].f,
-        c[4].e / c[4].f
-      ]
-    ];
-
+    var conics = this.state.given_conics;
     postData(COMPUTE_URL, { conics: conics })
       .then(
         function(data) {
@@ -491,7 +566,7 @@ class CustomInput extends React.Component {
     };
 
     var rendered = window.draw_conic(coeffs, {
-      strokeColor: conicColors[5],
+      strokeColor: tangentialConicColor,
       strokeWidth: 2,
       opacity: 1.0,
       animate: true
@@ -524,6 +599,32 @@ class CustomInput extends React.Component {
       this.renderAllTangentialConics();
       this.setState({ isRendering: true });
     }
+  }
+
+  downloadRealData() {
+    var str = conicsToString(
+      this.state.given_conics,
+      this.state.computed.tangential_conics
+    );
+    download("real_data.txt", str);
+  }
+
+  downloadComplexData() {
+    var complexConics = [];
+    var real = this.state.computed.complex_solutions.real;
+    var imag = this.state.computed.complex_solutions.imag;
+    for (var i = 0; i < real.length; i++) {
+      complexConics.push([
+        complexToString(real[i][0], imag[i][0]),
+        complexToString(real[i][1], imag[i][1]),
+        complexToString(real[i][2], imag[i][2]),
+        complexToString(real[i][3], imag[i][3]),
+        complexToString(real[i][4], imag[i][4]),
+        complexToString(real[i][5], imag[i][5])
+      ]);
+    }
+    var str = conicsToString(this.state.given_conics, complexConics);
+    download("complex_data.txt", str);
   }
 
   render() {
@@ -589,9 +690,16 @@ class CustomInput extends React.Component {
           : e(
               "button",
               {
-                className: "CustomInput-button",
-                disabled: !this.allConicsRendered(),
-                onClick: this.fetchTangentConics
+                className: this.allConicsRendered()
+                  ? "CustomInput-button"
+                  : "CustomInput-button-disabled",
+                onClick: this.allConicsRendered()
+                  ? this.fetchTangentConics
+                  : function() {
+                      alert(
+                        "You need to add all 5 conics by pressing the + buttons."
+                      );
+                    }
               },
               "Compute tangent conics"
             ),
@@ -600,16 +708,44 @@ class CustomInput extends React.Component {
           ? e(
               "div",
               { style: { display: "inline-block", marginLeft: 4 } },
-              "Of the 3264 conics are",
-              e("strong", null, " ", even(this.state.computed.nreal), " "),
-              "probably real."
+              e(
+                "strong",
+                null,
+                " ",
+                this.state.computed.complex_solutions.real.length,
+                " "
+              ),
+              "complex solutions found in",
+              e("strong", null, " ", this.state.computed.compute_time, " "),
+              "seconds.",
+              e(
+                "div",
+                null,
+                e("strong", null, " ", even(this.state.computed.nreal), " "),
+                "solutions are real: ",
+                e("strong", null, " ", this.state.computed.nellipses, " "),
+                "ellipses and ",
+                e("strong", null, " ", this.state.computed.nhyperbolas, " "),
+                "hyperbolas."
+              )
             )
           : e(
               "div",
               { style: { display: "inline-block", marginLeft: 4 } },
-              "Of the 3264 conics are",
               e("strong", null, " ? "),
-              "probably real."
+              "complex solutions found in",
+              e("strong", null, " ? "),
+              "seconds.",
+              e(
+                "div",
+                null,
+                e("strong", null, " ? "),
+                "solutions are real: ",
+                e("strong", null, " ? "),
+                "ellipses and ",
+                e("strong", null, " ? "),
+                "hyperbolas."
+              )
             ),
         e("canvas", {
           resize: "true",
@@ -631,6 +767,23 @@ class CustomInput extends React.Component {
                   this.state.isRendering
                     ? "Pause Animation"
                     : "Restart Animation"
+                )
+              ),
+              e(
+                "div",
+                { style: { marginTop: 20 } },
+                e(
+                  "button",
+                  {
+                    onClick: this.downloadRealData,
+                    style: { marginRight: 20 }
+                  },
+                  "Download real conics"
+                ),
+                e(
+                  "button",
+                  { onClick: this.downloadComplexData },
+                  "Download all conics"
                 )
               )
             )
