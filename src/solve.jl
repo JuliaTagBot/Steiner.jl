@@ -54,6 +54,20 @@ function setup_parameters!(homotopy, p₁, p₀)
     set_parameters!(H, (p₁, p₀))
 end
 
+function count_ellipses_hyperbolas(tangential_conics)
+    nellipses = nhyperbolas = 0
+    for conic in tangential_conics
+        a, b, c = conic[1], conic[2], conic[3]
+        if b^2 - 4 * a * c < 0
+            nellipses += 1
+        else
+            nhyperbolas += 1
+        end
+    end
+
+    nellipses, nhyperbolas
+end
+
 
 """
     solve_conics(M::Matrix)
@@ -76,11 +90,19 @@ function solve_conics(M::Matrix)
         push!(complex_solutions, x[1:5])
     end
     nreal = length(tangential_conics)
+    nellipses, nhyperbolas = count_ellipses_hyperbolas(tangential_conics)
+    if !iseven(nreal)
+        nreal += 1
+        nhyperbolas += 1
+    end
 
     Dict("tangential_conics" => tangential_conics,
          "tangential_points" => tangential_points,
          "tangential_indices" => tangential_indices,
          "nreal" => nreal,
+         "nellipses" => nellipses,
+         "nhyperbolas" => nhyperbolas,
+         "compute_time" => round(compute_time; digits=2),
          "complex_solutions" => Dict("real" => real.(complex_solutions),
                                      "imag" => imag.(complex_solutions)))
 end
