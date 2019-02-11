@@ -36,7 +36,7 @@ end
 
 Start a server at the given `port`.
 """
-function start_server(port=3264)
+function start_server(port=3264; async=false)
     routes() do
         Bukdu.options("/conics", ConicsController, take_options)
         post("/conics", ConicsController, solve_conics)
@@ -44,7 +44,11 @@ function start_server(port=3264)
         plug(Plug.Static, at="/", from=normpath(@__DIR__, "..", "public"))
     end
 
-    @sync begin
-        @async wait(Bukdu.start(port))
+    if async
+        Bukdu.start(port)
+    else
+        @sync begin
+            @async wait(Bukdu.start(port))
+        end
     end
 end
