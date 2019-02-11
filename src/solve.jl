@@ -58,8 +58,7 @@ end
 """
     solve_conics(M::Matrix)
 
-The conics are described as 5 × 5 matrix.
-Each column describes a normalized conic, i.e., with constant term 1.
+The conics are described as 6 × 5 matrix.
 
 Output is a vector of normalized conics.
 """
