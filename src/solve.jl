@@ -1,4 +1,5 @@
 using HomotopyContinuation, DynamicPolynomials, LinearAlgebra, StaticArrays
+const HC = HomotopyContinuation
 import ProjectiveVectors
 using DelimitedFiles
 
@@ -36,15 +37,17 @@ const startconics_startsolutions = begin
     startconics, allsolutions
 end
 
-function assemble_tracker()
+function assemble_trackers()
     startconics, startsolutions = startconics_startsolutions
     F, parameters = steiner_system()
-    pathtracker(F, startsolutions, parameters=parameters, p₁=startconics, p₀=(@SVector randn(30)),
+    tracker = pathtracker(F, startsolutions, parameters=parameters, p₁=startconics, p₀=(@SVector randn(30)),
         tol=1e-6,
         refinement_tol=1e-10)
+
+    [deepcopy(tracker) for _ in 1:Threads.nthreads()]
 end
 
-const tracker = assemble_tracker()
+const trackers = assemble_trackers()
 
 function setup_parameters!(homotopy, p₁, p₀)
     H = basehomotopy(homotopy)
@@ -110,10 +113,31 @@ end
 function solve_conics(output!::F, M::Matrix) where {F<:Function}
     p₁, startsolutions = startconics_startsolutions
     p₀ = SVector{30}(complex.(M))
-    setup_parameters!(tracker.homotopy, p₁, p₀)
-    solve_conics(output!, tracker, startsolutions)
+    for tracker in trackers
+        setup_parameters!(tracker.homotopy, p₁, p₀)
+    end
+    if length(trackers) > 1
+        results = HC.tmap(trackpath, trackers, startsolutions)
+        for (k, r) in enumerate(results)
+            x, success = r
+            if success
+                output!(x, k)
+            end
+        end
+    else
+        solve_conics(output!, trackers[1], startsolutions)
+    end
     nothing
 end
+
+
+function trackpath(pathtracker::PathTracker, tid, s) where {F<:Function}
+    ret = track!(pathtracker, s, 1.0, 0.0)
+    success = ret == PathTrackerStatus.success
+    x = ProjectiveVectors.affine_chart(currx(pathtracker))
+    x, success
+end
+
 
 function solve_conics(output!::F, pathtracker::PathTracker, starts) where {F<:Function}
     for (k, s) in enumerate(starts)
