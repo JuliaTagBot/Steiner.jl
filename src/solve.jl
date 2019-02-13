@@ -79,12 +79,12 @@ The conics are described as 6 × 5 matrix.
 
 Output is a vector of normalized conics.
 """
-function solve_conics(M::Matrix)
+function solve_conics(M::Matrix; threading=true)
     tangential_conics = Vector{Float64}[]
     tangential_points = Vector{Float64}[] # Stores [x1,y1,x2,y2,...,x5,y5]
     complex_solutions = Vector{ComplexF64}[]
     tangential_indices = Int[]
-    compute_time = @elapsed solve_conics(M) do x, k
+    compute_time = @elapsed solve_conics(M; threading=threading) do x, k
         if HomotopyContinuation.isrealvector(x, 1e-8)
             push!(tangential_conics, real.(x[1:5]))
             push!(tangential_points, real.(x[6:15]))
@@ -110,22 +110,53 @@ function solve_conics(M::Matrix)
                                      "imag" => imag.(complex_solutions)))
 end
 
-function solve_conics(output!::F, M::Matrix) where {F<:Function}
+function partition_work(N)
+    k = Threads.nthreads()
+
+    ls = range(1, stop=N, length=k+1)
+    map(1:k) do i
+        a = round(Int, ls[i])
+        if i > 1
+            a += 1
+        end
+        b = round(Int, ls[i+1])
+        a:b
+    end
+end
+
+function solve_conics(output!::F, M::Matrix; threading=true) where {F<:Function}
     p₁, startsolutions = startconics_startsolutions
     p₀ = SVector{30}(complex.(M))
     for tracker in trackers
         setup_parameters!(tracker.homotopy, p₁, p₀)
     end
-    if length(trackers) > 1
-        results = HC.tmap(trackpath, trackers, startsolutions)
-        for (k, r) in enumerate(results)
-            x, success = r
-            if success
+    if length(trackers) > 1 && threading
+        results = Vector{Union{Nothing, Vector{ComplexF64}}}(undef, 3264)
+        ranges = partition_work(3264)
+        Threads.@threads for range in ranges
+            tid = Threads.threadid()
+            track_batch!(results, trackers[tid], range, startsolutions)
+        end
+        for (k, x) in enumerate(results)
+            if x !== nothing
                 output!(x, k)
             end
         end
     else
         solve_conics(output!, trackers[1], startsolutions)
+    end
+    nothing
+end
+
+function track_batch!(results, pathtracker, range, starts)
+    for k in range
+        s = starts[k]
+        ret = track!(pathtracker, s, 1.0, 0.0)
+        if ret == PathTrackerStatus.success
+            results[k] = ProjectiveVectors.affine_chart(currx(pathtracker))
+        else
+            results[k] = nothing
+        end
     end
     nothing
 end
