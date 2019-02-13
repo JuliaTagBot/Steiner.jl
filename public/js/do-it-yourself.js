@@ -1,6 +1,6 @@
 "use strict";
 
-const COMPUTE_URL = location.protocol + "//localhost:3264/conics";
+const COMPUTE_URL = location.protocol + "//" + location.hostname + ":3264/conics";
 const e = React.createElement;
 const tangentialConicColor = "#FB5B5B";
 const givenConicColor = "#25A9CC";
