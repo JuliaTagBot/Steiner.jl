@@ -72,27 +72,29 @@ function count_ellipses_hyperbolas(tangential_conics)
 end
 
 function find_circle(tangential_conics)
+    isempty(tangential_conics) && return nothing
     e = map(conic -> (conic[1]-conic[3])^2 + conic[2]^2, tangential_conics)
     f, i = findmin(e)
-    return i
+    return tangential_conics[i]
 end
 
 function find_most_complex(complex_solutions)
     e = map(conic -> sum(abs2.(imag(conic))), complex_solutions)
     f, i = findmax(e)
-    return i
+    return complex_solutions[i]
 end
 
 function find_most_nondeg(complex_solutions, tangential_conics)
-    e1 = map(conic -> cond([2*conic[1] conic[2]; conic[2] 2*conic[3]]), complex_solutions)
-    e2 = map(conic -> cond([2*conic[1] conic[2]; conic[2] 2*conic[3]]), tangential_conics)
+    e1 = map(c -> cond([2c[1] c[2] c[4]; c[2] 2c[3] c[5]; c[4] c[5] 2]), complex_solutions)
     f1, i1 = findmin(e1)
-    f2, i2 = findmin(e1)
-    if f1<f2
-        return complex_solutions[i1]
-    else
-        return tangential_conics[i2]
+    if !isempty(tangential_conics)
+        e2 = map(c -> cond([2c[1] c[2] c[4]; c[2] 2c[3] c[5]; c[4] c[5] 2]), tangential_conics)
+        f2, i2 = findmin(e1)
+
+        f2 ≤ f1 && return complex_solutions[i1]
     end
+
+    return complex_solutions[i1]
 end
 
 """
@@ -121,8 +123,8 @@ function solve_conics(M::Matrix; threading=true)
         pop!(tangential_conics)
     end
     nellipses, nhyperbolas = count_ellipses_hyperbolas(tangential_conics)
-    i_complex = find_most_complex(complex_solutions)
-    i_circle = find_circle(tangential_conics)
+    is_most_complex = find_most_complex(complex_solutions)
+    looks_most_like_a_circle = find_circle(tangential_conics)
     C_nondeg = find_most_nondeg(complex_solutions, tangential_conics)
 
     Dict("tangential_conics" => tangential_conics,
@@ -134,10 +136,9 @@ function solve_conics(M::Matrix; threading=true)
          "compute_time" => round(compute_time; digits=2),
          "complex_solutions" => Dict("real" => real.(complex_solutions),
                                      "imag" => imag.(complex_solutions)),
-         "is_most_complex" => Dict("real" => real(complex_solutions[i_complex]),
-                                   "imag" => imag(complex_solutions[i_complex])),
-         "looks_most_like_a_circle" => Dict("real" => real(tangential_conics[i_circle]),
-                                            "imag" => imag(tangential_conics[i_circle])),
+         "is_most_complex" => Dict("real" => real(is_most_complex),
+                                   "imag" => imag(is_most_complex)),
+         "looks_most_like_a_circle" => looks_most_like_a_circle,
          "most_nondeg" => Dict("real" => real(C_nondeg),
                                "imag" => imag(C_nondeg)))
 end
