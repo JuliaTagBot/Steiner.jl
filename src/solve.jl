@@ -71,6 +71,29 @@ function count_ellipses_hyperbolas(tangential_conics)
     nellipses, nhyperbolas
 end
 
+function find_circle(tangential_conics)
+    e = map(conic -> (conic[1]-conic[3])^2 + conic[2]^2, tangential_conics)
+    f, i = findmin(e)
+    return i
+end
+
+function find_most_complex(complex_solutions)
+    e = map(conic -> sum(abs2.(imag(conic))), complex_solutions)
+    f, i = findmax(e)
+    return i
+end
+
+function find_most_nondeg(complex_solutions, tangential_conics)
+    e1 = map(conic -> cond([2*conic[1] conic[2]; conic[2] 2*conic[3]]), complex_solutions)
+    e2 = map(conic -> cond([2*conic[1] conic[2]; conic[2] 2*conic[3]]), tangential_conics)
+    f1, i1 = findmin(e1)
+    f2, i2 = findmin(e1)
+    if f1<f2
+        return complex_solutions[i1]
+    else
+        return tangential_conics[i2]
+    end
+end
 
 """
     solve_conics(M::Matrix)
@@ -93,11 +116,14 @@ function solve_conics(M::Matrix; threading=true)
         push!(complex_solutions, x[1:5])
     end
     nreal = length(tangential_conics)
-    nellipses, nhyperbolas = count_ellipses_hyperbolas(tangential_conics)
     if !iseven(nreal)
-        nreal += 1
-        nhyperbolas += 1
+        nreal -= 1
+        pop!(tangential_conics)
     end
+    nellipses, nhyperbolas = count_ellipses_hyperbolas(tangential_conics)
+    i_complex = find_most_complex(complex_solutions)
+    i_circle = find_circle(tangential_conics)
+    C_nondeg = find_most_nondeg(complex_solutions, tangential_conics)
 
     Dict("tangential_conics" => tangential_conics,
          "tangential_points" => tangential_points,
@@ -107,7 +133,13 @@ function solve_conics(M::Matrix; threading=true)
          "nhyperbolas" => nhyperbolas,
          "compute_time" => round(compute_time; digits=2),
          "complex_solutions" => Dict("real" => real.(complex_solutions),
-                                     "imag" => imag.(complex_solutions)))
+                                     "imag" => imag.(complex_solutions)),
+         "is_most_complex" => Dict("real" => real(complex_solutions[i_complex]),
+                                   "imag" => imag(complex_solutions[i_complex])),
+         "looks_most_like_a_circle" => Dict("real" => real(tangential_conics[i_circle]),
+                                            "imag" => imag(tangential_conics[i_circle])),
+         "most_nondeg" => Dict("real" => real(C_nondeg),
+                               "imag" => imag(C_nondeg)))
 end
 
 function partition_work(N)
