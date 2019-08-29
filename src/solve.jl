@@ -29,7 +29,8 @@ function assemble_tracker()
     F, parameters = steiner_system()
     HC.pathtracker(F, startsolutions;
                 parameters=parameters,
-                generic_parameters=startconics)
+                generic_parameters=startconics,
+                accuracy=1e-5)
 end
 
 function setup_parameters!(homotopy, p₁, p₀)
@@ -127,8 +128,7 @@ function solve_conics(M::Matrix; threading=true)
 end
 
 function partition_work(N)
-    k = Threads.nthreads()
-
+    k = 4Threads.nthreads()
     ls = range(1, stop=N, length=k+1)
     map(1:k) do i
         a = round(Int, ls[i])
@@ -149,9 +149,12 @@ function solve_conics(output!::F, M::Matrix; threading=true) where {F<:Function}
     if length(trackers) > 1 && threading
         results = Vector{Union{Nothing, Vector{ComplexF64}}}(undef, 3264)
         ranges = partition_work(3264)
-        Threads.@threads for range in ranges
-            tid = Threads.threadid()
-            track_batch!(results, trackers[tid], range, startsolutions)
+        N = Threads.nthreads()
+        let results = results, ranges = ranges, trackers=trackers, startsolutions=startsolutions
+            Threads.@threads for range in ranges
+                tid = Threads.threadid()
+                track_batch!(results, trackers[tid], range, startsolutions)
+            end
         end
         for (k, x) in enumerate(results)
             if x !== nothing
