@@ -1,17 +1,12 @@
-using HomotopyContinuation, DynamicPolynomials, LinearAlgebra, StaticArrays
-const HC = HomotopyContinuation
-import ProjectiveVectors
-using DelimitedFiles
-
 function steiner_system()
-    @polyvar x[1:2] a[1:5] c[1:6] y[1:2, 1:5]
+    DP.@polyvar x[1:2] a[1:5] c[1:6] y[1:2, 1:5]
 
     #tangential conics
     f = a[1]*x[1]^2 + a[2]*x[1]*x[2] + a[3]*x[2]^2 + a[4]*x[1]  + a[5]*x[2] + 1;
-    ∇ = differentiate(f, x)
+    ∇ = DP.differentiate(f, x)
     #5 conics
     g = c[1]*x[1]^2 + c[2]*x[1]*x[2] + c[3]*x[2]^2 + c[4]*x[1]  + c[5]*x[2] + c[6];
-    ∇_2 = differentiate(g, x)
+    ∇_2 = DP.differentiate(g, x)
     #the general system
     #f_a_0 is tangent to g_b₀ at x₀
     function Incidence(f,a₀,g,b₀,x₀)
@@ -24,30 +19,19 @@ function steiner_system()
     end
 
     #Track the solutions elsewhere
-    @polyvar v[1:6, 1:5]
+    DP.@polyvar v[1:6, 1:5]
     F = vcat(map(i -> Incidence(f,a,g, v[:,i], y[:,i]), 1:5)...)
     F, vec(v)
 end
 
-const startconics_startsolutions = begin
-    startconics = SVector{30}(readdlm(joinpath(@__DIR__, "..", "deps", "startconics.txt"), '\t', ComplexF64))
-    allsolutions_real = readdlm(joinpath(@__DIR__, "..", "deps", "allsolutions_real.txt"), '\t', Float64, '\n')
-    allsolutions_imag = readdlm(joinpath(@__DIR__, "..", "deps", "allsolutions_imag.txt"), '\t', Float64, '\n')
-    allsolutions = [[complex(allsolutions_real[i, j], allsolutions_imag[i,j]) for j=1:15] for i=1:3264]
-    startconics, allsolutions
-end
-
-function assemble_trackers()
+function assemble_tracker()
     startconics, startsolutions = startconics_startsolutions
     F, parameters = steiner_system()
-    tracker = pathtracker(F, startsolutions, parameters=parameters, p₁=startconics, p₀=(@SVector randn(30)),
-        tol=1e-6,
-        refinement_tol=1e-10)
-
-    [deepcopy(tracker) for _ in 1:Threads.nthreads()]
+    HC.pathtracker(F, startsolutions;
+                parameters=parameters,
+                generic_parameters=startconics,
+                predictor=HC.Pade21())
 end
-
-const trackers = assemble_trackers()
 
 function setup_parameters!(homotopy, p₁, p₀)
     H = basehomotopy(homotopy)
@@ -61,7 +45,7 @@ function count_ellipses_hyperbolas(tangential_conics)
     nellipses = nhyperbolas = 0
     for conic in tangential_conics
         a, b, c = conic[1], conic[2], conic[3]
-        if b^2 - 4 * a * c < 0
+        if b^2 - 4a*c < 0
             nellipses += 1
         else
             nhyperbolas += 1
@@ -110,7 +94,7 @@ function solve_conics(M::Matrix; threading=true)
     complex_solutions = Vector{ComplexF64}[]
     tangential_indices = Int[]
     compute_time = @elapsed solve_conics(M; threading=threading) do x, k
-        if HomotopyContinuation.isrealvector(x, 1e-8)
+        if HC.is_real_vector(x, 1e-6)
             push!(tangential_conics, real.(x[1:5]))
             push!(tangential_points, real.(x[6:15]))
             push!(tangential_indices, k)
@@ -161,7 +145,7 @@ function solve_conics(output!::F, M::Matrix; threading=true) where {F<:Function}
     p₁, startsolutions = startconics_startsolutions
     p₀ = SVector{30}(complex.(M))
     for tracker in trackers
-        setup_parameters!(tracker.homotopy, p₁, p₀)
+        HC.set_parameters!(tracker; start_parameters=p₁, target_parameters=p₀)
     end
     if length(trackers) > 1 && threading
         results = Vector{Union{Nothing, Vector{ComplexF64}}}(undef, 3264)
@@ -184,9 +168,9 @@ end
 function track_batch!(results, pathtracker, range, starts)
     for k in range
         s = starts[k]
-        ret = track!(pathtracker, s, 1.0, 0.0)
-        if ret == PathTrackerStatus.success
-            results[k] = ProjectiveVectors.affine_chart(currx(pathtracker))
+        ret = HC.track!(pathtracker, s)
+        if ret == HC.PathTrackerStatus.success
+            results[k] = copy(HC.solution(pathtracker))
         else
             results[k] = nothing
         end
@@ -195,19 +179,19 @@ function track_batch!(results, pathtracker, range, starts)
 end
 
 
-function trackpath(pathtracker::PathTracker, tid, s) where {F<:Function}
-    ret = track!(pathtracker, s, 1.0, 0.0)
-    success = ret == PathTrackerStatus.success
-    x = ProjectiveVectors.affine_chart(currx(pathtracker))
+function trackpath(pathtracker, tid, s) where {F<:Function}
+    ret = HC.track!(pathtracker, s)
+    success = ret == HC.PathTrackerStatus.success
+    x = copy(current_x(pathtracker))
     x, success
 end
 
 
-function solve_conics(output!::F, pathtracker::PathTracker, starts) where {F<:Function}
+function solve_conics(output!::F, pathtracker::HC.PathTracker, starts) where {F<:Function}
     for (k, s) in enumerate(starts)
-        ret = track!(pathtracker, s, 1.0, 0.0)
-        if ret == PathTrackerStatus.success
-            x = ProjectiveVectors.affine_chart(currx(pathtracker))
+        ret = HC.track!(pathtracker, s)
+        if ret == HC.PathTrackerStatus.success
+            x = copy(HC.solution(pathtracker))
             output!(x, k)
         end
     end
