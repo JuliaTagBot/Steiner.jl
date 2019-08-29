@@ -29,8 +29,7 @@ function assemble_tracker()
     F, parameters = steiner_system()
     HC.pathtracker(F, startsolutions;
                 parameters=parameters,
-                generic_parameters=startconics,
-                predictor=HC.Pade21())
+                generic_parameters=startconics)
 end
 
 function setup_parameters!(homotopy, p₁, p₀)
