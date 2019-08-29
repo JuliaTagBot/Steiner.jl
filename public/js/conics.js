@@ -236,7 +236,28 @@ window.setup_conics = function(args, is_setup_cb) {
     return null;
   }
 
+  function conicHasNoSolutions(A, B, C, D, E, F) {
+    // Check whether the conic has no real solutions
+    // by checking that the associated matrix is neither
+    // positive definite nor negative definite
+    // using Sylvester's criterion
+    var m1 = 2 * A;
+    var m2 = 4 * A * C - B * B;
+    var m3 =
+      8 * A * C * F -
+      2 * A * E * E -
+      2 * B * B * F +
+      2 * B * D * E -
+      2 * C * D * D;
+
+    return (m1 > 0 && m2 > 0 && m3 > 0) || (m1 < 0 && m2 < 0 && m3 < 0);
+  }
+
   function conic(A, B, C, D, E, F) {
+    if (conicHasNoSolutions(A, B, C, D, E, F)) {
+      return null;
+    }
+
     // Check for circle
     if (Math.abs(A - C) < 1e-14 && Math.abs(B) < 1e-14) {
       return circle(A, D, E, F);
@@ -245,7 +266,10 @@ window.setup_conics = function(args, is_setup_cb) {
     // We apply a change of coordinates such that in the end B = 0.
     // By this we remove any rotation component.
     var iscircle =
-      Math.abs(C - A) < 1e-15 && Math.abs(D) < 1e-15 && Math.abs(E) < 1e-15;
+      Math.abs(C - A) < 1e-15 &&
+      Math.abs(B) < 1e-15 &&
+      Math.abs(D) < 1e-15 &&
+      Math.abs(E) < 1e-15;
     var theta = iscircle
       ? 0
       : Math.abs(C - A) < 1e-15
@@ -359,11 +383,13 @@ window.setup_conics = function(args, is_setup_cb) {
 
   function remove_conic(conic) {
     // conic.remove();
+    if (conic) {
+      conic.tweenTo({ opacity: 0.0 }, 600);
+      setTimeout(function() {
+        conic.remove();
+      }, 600);
+    }
 
-    conic.tweenTo({ opacity: 0.0 }, 600);
-    setTimeout(function() {
-      conic.remove();
-    }, 600);
     // conic.tweenTo({ opacity: 0.0 }, 500).then(function() {
     //   conic.remove();
     // });

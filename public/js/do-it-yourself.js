@@ -1,6 +1,7 @@
 "use strict";
 
-const COMPUTE_URL = location.protocol + "//" + location.hostname + ":3264/conics";
+// const COMPUTE_URL = "https://c107-250.cloud.gwdg.de/conics";
+const COMPUTE_URL = "http://localhost:3264/conics";
 const e = React.createElement;
 const tangentialConicColor = "#FB5B5B";
 const givenConicColor = "#25A9CC";
@@ -10,17 +11,40 @@ function even(x) {
   return x % 2 == 0 ? x : x + 1;
 }
 
-function random_conic_state() {
-  var values = {
-    a: random_number(),
-    b: random_number(),
-    c: random_number(),
-    d: random_number(),
-    e: random_number(),
-    f: random_number()
-  };
+function conicHasNoSolutions(A, B, C, D, E, F) {
+  // Check whether the conic has no real solutions
+  // by checking that the associated matrix is neither
+  // positive definite nor negative definite
+  // using Sylvester's criterion
+  var m1 = 2 * A;
+  var m2 = 4 * A * C - B * B;
+  var m3 =
+    8 * A * C * F -
+    2 * A * E * E -
+    2 * B * B * F +
+    2 * B * D * E -
+    2 * C * D * D;
 
-  return values;
+  return (m1 > 0 && m2 > 0 && m3 > 0) || (m1 < 0 && m2 < 0 && m3 < 0);
+}
+
+function random_conic_state() {
+  var a = random_number();
+  var b = random_number();
+  var c = random_number();
+  var d = random_number();
+  var e = random_number();
+  var f = random_number();
+
+  while (window.conicHasNoSolutions(a, b, c, d, e, f)) {
+    a = random_number();
+    b = random_number();
+    c = random_number();
+    d = random_number();
+    e = random_number();
+    f = random_number();
+  }
+  return { a: a, b: b, c: c, d: d, e: e, f: f };
 }
 
 function random_number() {
@@ -206,7 +230,10 @@ function conicsToString(given_conics, conics) {
 }
 
 function complexToString(re, im) {
-  return im < 0 ? re + " - " + Math.abs(im) + "im" : re + "+ " + im + "im";
+  return im < 0 ? re + " - " + Math.abs(im) + "i" : re + "+ " + im + "i";
+}
+function complexToStringCoeff(re, im) {
+  return "(" + complexToString(re, im) + ")";
 }
 
 function download(filename, text) {
@@ -512,10 +539,13 @@ class CustomInput extends React.Component {
       opacity: 0.7,
       strokeWidth: 2
     });
+
     if (rendered !== null) {
       var conics = this.state.conics;
       conics[i] = { rendered: rendered, coeffs: values };
       this.setState({ conics: conics });
+    } else {
+      alert("The given conic has no real solutions!");
     }
 
     return;
@@ -558,6 +588,7 @@ class CustomInput extends React.Component {
         className: "InputConics-minus",
         onClick: function() {
           this.removeConic(i);
+          this.removeOldData();
         }.bind(this)
       })
     );
@@ -582,7 +613,7 @@ class CustomInput extends React.Component {
       .catch(
         function(error) {
           console.error(error);
-          alert("Somethign went wrong :(");
+          alert("Something went wrong :(");
         }.bind(this)
       )
       .then(
@@ -829,27 +860,28 @@ class CustomInput extends React.Component {
                 "hyperbolas."
               )
             ),
-        this.state.tangential_conics.length
-          ? e(
-              "div",
-              {
-                style: {
-                  fontSize: 14,
-                  color: tangentialConicColor,
-                  marginBottom: -44,
-                  marginLeft: "auto",
-                  marginTop: 12
-                }
-              },
-              e(InlineMath, {
+        e(
+          "div",
+          {
+            style: {
+              fontSize: 14,
+              color: tangentialConicColor,
+              marginBottom: 12,
+              marginLeft: "auto",
+              marginTop: 12,
+              minHeight: 32
+            }
+          },
+          this.state.tangential_conics.length
+            ? e(InlineMath, {
                 math: coeffsToStringRounded(
                   this.state.tangential_conics[
                     this.state.tangential_conics.length - 1
                   ].coeffs
                 )
               })
-            )
-          : null,
+            : null
+        ),
         e("canvas", {
           resize: "true",
           ref: this.setCanvasRef,
@@ -860,7 +892,7 @@ class CustomInput extends React.Component {
           ? null
           : e(
               "div",
-              null,
+              { style: { width: "100%" } },
               e(
                 "div",
                 { style: { display: "flex", justifyContent: "center" } },
@@ -872,21 +904,151 @@ class CustomInput extends React.Component {
                     : "Restart Animation"
                 )
               ),
+              e("hr", { style: { marginTop: 10 } }),
               e(
                 "div",
-                { style: { marginTop: 20 } },
+                {
+                  style: {
+                    marginTop: 10,
+                    display: "flex",
+                    justifyContent: "space-evenly"
+                  }
+                },
                 e(
                   "button",
                   {
                     onClick: this.downloadRealData,
-                    style: { marginRight: 20 }
+                    style: { marginRight: 10 }
                   },
                   "Download real conics"
                 ),
                 e(
                   "button",
-                  { onClick: this.downloadComplexData },
+                  {
+                    onClick: this.downloadComplexData,
+                    style: { marginLeft: 10 }
+                  },
                   "Download all conics"
+                )
+              ),
+              e("hr", { style: { marginTop: 16, marginBottom: 6 } }),
+              !this.state.computed.looks_most_like_a_circle
+                ? null
+                : e(
+                    "div",
+                    // { style: { marginTop: 12 } },
+                    null,
+                    e(
+                      "strong",
+                      null,
+                      "The conic which looks most like a circle:"
+                    ),
+                    e(
+                      "div",
+                      {
+                        style: {
+                          // display: "inline-block",
+                          fontSize: 12,
+                          marginLeft: 8
+                        }
+                      },
+                      e(InlineMath, {
+                        displayMode: true,
+                        math: coeffsToStringRounded({
+                          a: this.state.computed.looks_most_like_a_circle[0],
+                          b: this.state.computed.looks_most_like_a_circle[1],
+                          c: this.state.computed.looks_most_like_a_circle[2],
+                          d: this.state.computed.looks_most_like_a_circle[3],
+                          e: this.state.computed.looks_most_like_a_circle[4],
+                          f: 1
+                        })
+                      })
+                    )
+                  ),
+              e(
+                "div",
+                null,
+                e("strong", null, "The conic furthest away from being real:"),
+                e(
+                  "div",
+                  {
+                    style: {
+                      // display: "inline-block",
+                      fontSize: 12,
+                      marginLeft: 8
+                    }
+                  },
+                  e(InlineMath, {
+                    displayMode: true,
+                    math: coeffsToString({
+                      a: complexToStringCoeff(
+                        round(this.state.computed.is_most_complex.real[0]),
+                        round(this.state.computed.is_most_complex.imag[0])
+                      ),
+                      b: complexToStringCoeff(
+                        round(this.state.computed.is_most_complex.real[1]),
+                        round(this.state.computed.is_most_complex.imag[1])
+                      ),
+                      c: complexToStringCoeff(
+                        round(this.state.computed.is_most_complex.real[2]),
+                        round(this.state.computed.is_most_complex.imag[2])
+                      ),
+                      d: complexToStringCoeff(
+                        round(this.state.computed.is_most_complex.real[3]),
+                        round(this.state.computed.is_most_complex.imag[3])
+                      ),
+                      e: complexToStringCoeff(
+                        round(this.state.computed.is_most_complex.real[4]),
+                        round(this.state.computed.is_most_complex.imag[4])
+                      ),
+                      f: 1
+                    })
+                  })
+                )
+              ),
+              e(
+                "div",
+                null,
+                e(
+                  "strong",
+                  null,
+                  "The conic which is furthest away from being degenerate:"
+                ),
+                e(
+                  "div",
+                  {
+                    style: {
+                      // display: "inline-block",
+                      fontSize: 12,
+                      marginLeft: 8
+                    }
+                  },
+                  e(InlineMath, {
+                    displayMode: true,
+                    math: coeffsToString({
+                      a: complexToStringCoeff(
+                        round(this.state.computed.most_nondeg.real[0]),
+                        round(this.state.computed.most_nondeg.imag[0])
+                      ),
+                      b: complexToStringCoeff(
+                        round(this.state.computed.most_nondeg.real[1]),
+                        round(this.state.computed.most_nondeg.imag[1])
+                      ),
+                      c: complexToStringCoeff(
+                        round(this.state.computed.most_nondeg.real[2]),
+                        round(this.state.computed.most_nondeg.imag[2])
+                      ),
+                      d: complexToStringCoeff(
+                        round(this.state.computed.most_nondeg.real[3]),
+                        round(this.state.computed.most_nondeg.imag[3])
+                      ),
+                      e: complexToStringCoeff(
+                        round(this.state.computed.most_nondeg.real[4]),
+                        round(this.state.computed.most_nondeg.imag[4])
+                      ),
+                      f: 1
+                    })
+                  })
                 )
               )
             )
